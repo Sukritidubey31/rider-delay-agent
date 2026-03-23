@@ -1,9 +1,9 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: { "Content-Type": "application/json" },
-});
+    baseURL: import.meta.env.VITE_API_URL || "http://127.0.0.1:8000",
+    headers: { "Content-Type": "application/json" },
+  });
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -134,4 +134,5 @@ export const simulateRiderReply = (riderPhone: string, message: string) =>
     api.post(`/webhooks/sms/simulate?rider_phone=${encodeURIComponent(riderPhone)}&message=${encodeURIComponent(message)}`).then(r => r.data);
 export const getDelaysByOrder = (orderId: string) =>
     api.get<Delay[]>(`/delays/by-order/${orderId}`).then(r => r.data);
+
 export default api;
