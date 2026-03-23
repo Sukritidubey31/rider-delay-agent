@@ -35,3 +35,14 @@ app.include_router(lookup.router)
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Rider Delay Agent running"}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "https://your-app.vercel.app",  # add after Vercel deploy
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
