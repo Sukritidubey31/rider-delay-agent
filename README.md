@@ -6,6 +6,13 @@ Built as a portfolio project to demonstrate agentic AI workflows, real-time ops 
 
 ---
 
+## Live demo
+
+- **Ops dashboard:** https://frontend-peach-seven-32.vercel.app
+- **API docs:** https://rider-delay-agent-production.up.railway.app/docs
+
+---
+
 ## What it does
 
 - **Detects delays automatically** — a polling job runs every 30 seconds, comparing current time against expected pickup and delivery times for all active orders
