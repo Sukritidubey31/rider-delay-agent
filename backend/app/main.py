@@ -40,7 +40,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://your-app.vercel.app",  # add after Vercel deploy
+        "https://frontend-peach-seven-32.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

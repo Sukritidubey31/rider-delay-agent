@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { type Order, type Delay, type MessageLog, getActiveOrders, getAllOrders, getDelayMessages } from "../api/client";
+import { type Order, type Delay, type MessageLog, getDelayMessages } from "../api/client";
 import api from "../api/client";
 
 const fmt = (val: string | null) =>
