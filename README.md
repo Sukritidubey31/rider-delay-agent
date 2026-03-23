@@ -17,6 +17,29 @@ Built as a portfolio project to demonstrate agentic AI workflows, real-time ops 
 
 ---
 
+## Agent flow
+
+```mermaid
+flowchart TD
+    A[Polling job\nRuns every 30 seconds] --> B[Query active orders\nStatus: assigned or picked_up]
+    B --> C{Threshold exceeded?\nnow > expected_time + 10 min}
+    C -- No --> D[Skip]
+    C -- Yes --> E{Delay record exists?\nAvoid duplicate escalations}
+    E -- Yes --> F[Skip]
+    E -- No --> G[Create delay record\nFire Claude agent with order context]
+    G --> H[SMS rider\nAsk for cause and new ETA]
+    H --> I{Rider responds?\nWithin 5-minute window}
+    I -- No --> J[Escalate: no response\nFlag for ops]
+    I -- Yes --> K{Delay will continue?\nBased on rider reply}
+    K -- No --> L[Resolved\nLog cause and time]
+    K -- Yes --> M[Escalate\nNotify customer and store]
+    L --> N[Update delay record]
+    M --> N
+    J --> N
+```
+
+---
+
 ## Demo flow
 
 1. Click **New test order** on the dashboard
@@ -34,10 +57,10 @@ Built as a portfolio project to demonstrate agentic AI workflows, real-time ops 
 | Layer | Technology |
 |---|---|
 | Backend | Python, FastAPI |
-| AI agent | Anthropic Claude API (`claude-opus-4-5`) |
+| AI agent | Anthropic Claude API (claude-opus-4-5) |
 | Database | Supabase (PostgreSQL) |
 | Scheduling | APScheduler |
-| SMS | Twilio (mocked in dev) |
+| SMS | Twilio (mocked in dev, plug in credentials for prod) |
 | Frontend | React, TypeScript, Vite |
 | Styling | Tailwind CSS |
 | Deployment | Railway (backend), Vercel (frontend) |
@@ -50,42 +73,41 @@ Built as a portfolio project to demonstrate agentic AI workflows, real-time ops 
 rider-delay-agent/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI entry point + CORS
-│   │   ├── database.py          # Supabase client
+│   │   ├── main.py
+│   │   ├── database.py
 │   │   ├── routers/
-│   │   │   ├── orders.py        # Order CRUD + status updates
-│   │   │   ├── delays.py        # Delay records + dashboard data
-│   │   │   ├── webhooks.py      # Twilio inbound SMS + simulation
-│   │   │   └── lookup.py        # Riders, customers, stores lists
+│   │   │   ├── orders.py
+│   │   │   ├── delays.py
+│   │   │   ├── webhooks.py
+│   │   │   └── lookup.py
 │   │   ├── agent/
-│   │   │   ├── claude_agent.py  # Claude conversation logic
-│   │   │   ├── prompts.py       # System + message prompts
+│   │   │   ├── claude_agent.py
+│   │   │   ├── prompts.py
 │   │   │   └── escalation.py
 │   │   ├── scheduler/
-│   │   │   └── poller.py        # APScheduler polling job
+│   │   │   └── poller.py
 │   │   ├── services/
-│   │   │   ├── sms.py           # Twilio / mock SMS
-│   │   │   └── delay_detector.py # Threshold detection logic
+│   │   │   ├── sms.py
+│   │   │   └── delay_detector.py
 │   │   └── models/
-│   │       └── schemas.py       # Pydantic models
-│   ├── .env
+│   │       └── schemas.py
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
 │       ├── pages/
-│       │   ├── Dashboard.tsx    # Ops dashboard
-│       │   ├── OrderDetail.tsx  # Per-order timeline
-│       │   ├── OrderList.tsx    # Order list
-│       │   └── OrderTracking.tsx # Customer tracking page
+│       │   ├── Dashboard.tsx
+│       │   ├── OrderDetail.tsx
+│       │   ├── OrderList.tsx
+│       │   └── OrderTracking.tsx
 │       ├── components/
 │       │   ├── DelayTable.tsx
 │       │   ├── DelayCard.tsx
 │       │   ├── StatsBar.tsx
 │       │   └── CreateOrderModal.tsx
 │       └── api/
-│           └── client.ts        # Axios + TypeScript types
-├── schema.sql                   # Database schema
-├── seed.sql                     # Sample data
+│           └── client.ts
+├── schema.sql
+├── seed.sql
 └── README.md
 ```
 
@@ -94,14 +116,14 @@ rider-delay-agent/
 ## Data model
 
 ```
-rider       ──< order >── customer
-                 │            store
-                 │
-              delay ──< message_log
+rider       --< order >-- customer
+                 |            store
+                 |
+              delay --< message_log
 ```
 
 - `order` has two delay scenarios: `late_pickup` (assigned, not yet collected) and `late_delivery` (picked up, not yet delivered)
-- `delay` tracks the full lifecycle: detection → rider contact → response → escalation → resolution
+- `delay` tracks the full lifecycle: detection, rider contact, response, escalation, resolution
 - `message_log` stores every SMS in both directions with `recipient_type` (rider / customer / store)
 
 ---
@@ -135,13 +157,13 @@ TWILIO_AUTH_TOKEN=your_twilio_auth_token
 TWILIO_PHONE_NUMBER=your_twilio_number
 ```
 
-Run the database schema and seed data in Supabase SQL Editor (`schema.sql` then `seed.sql`), then start the server:
+Run schema.sql then seed.sql in Supabase SQL Editor, then:
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-API docs available at `http://127.0.0.1:8000/docs`
+API docs at http://127.0.0.1:8000/docs
 
 ### Frontend
 
@@ -151,7 +173,7 @@ npm install
 npm run dev
 ```
 
-App runs at `http://localhost:5173`
+App runs at http://localhost:5173
 
 ---
 
@@ -161,13 +183,13 @@ App runs at `http://localhost:5173`
 APScheduler runs inside the FastAPI process — no additional infrastructure, easy to debug, and the polling logic stays in Python where the rest of the agent lives.
 
 **Why mock SMS in dev?**
-Twilio's A2P 10DLC registration requirements make local SMS testing impractical. The mock logs the exact message that would be sent, which is sufficient for development and demos. Swap `sms.py` for the real Twilio implementation in production.
+Twilio A2P 10DLC registration requirements make local SMS testing impractical. The mock logs the exact message that would be sent, which is sufficient for development and demos. Swap sms.py for the real Twilio implementation in production.
 
 **Why Claude for rider communication?**
-Rule-based systems send templated messages and can't interpret free-text responses. Claude generates contextual outreach based on the specific order and rider, and interprets the rider's reply to make a nuanced escalation decision — something a decision tree can't do well.
+Rule-based systems send templated messages and cannot interpret free-text responses. Claude generates contextual outreach based on the specific order and rider, and interprets the reply to make a nuanced escalation decision — something a decision tree cannot do well.
 
-**Why separate customer tracking page?**
-Ops and customer views have different information needs and trust levels. The tracking page exposes only customer-safe fields (no rider phone, no internal IDs) via a dedicated `/orders/:id/tracking` endpoint.
+**Why a separate customer tracking page?**
+Ops and customer views have different information needs and trust levels. The tracking page exposes only customer-safe fields via a dedicated /orders/:id/tracking endpoint — no rider phone numbers, no internal IDs.
 
 ---
 
@@ -175,21 +197,21 @@ Ops and customer views have different information needs and trust levels. The tr
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/orders/` | All orders |
-| GET | `/orders/active` | Active orders only |
-| GET | `/orders/:id` | Single order |
-| GET | `/orders/:id/tracking` | Customer-safe tracking payload |
-| PATCH | `/orders/:id/status` | Update order status |
-| POST | `/orders/` | Create order |
-| GET | `/delays/` | All delays |
-| GET | `/delays/active` | Active delays (pending + escalated) |
-| GET | `/delays/stats` | Aggregate stats for dashboard |
-| GET | `/delays/:id` | Single delay |
-| GET | `/delays/:id/messages` | Message thread for a delay |
-| GET | `/delays/by-order/:id` | All delays for an order |
-| PATCH | `/delays/:id/resolve` | Manually resolve a delay |
-| POST | `/webhooks/sms` | Twilio inbound SMS webhook |
-| POST | `/webhooks/sms/simulate` | Simulate a rider reply (dev) |
-| GET | `/riders` | Rider list |
-| GET | `/customers` | Customer list |
-| GET | `/stores` | Store list |
+| GET | /orders/ | All orders |
+| GET | /orders/active | Active orders only |
+| GET | /orders/:id | Single order |
+| GET | /orders/:id/tracking | Customer-safe tracking payload |
+| PATCH | /orders/:id/status | Update order status |
+| POST | /orders/ | Create order |
+| GET | /delays/ | All delays |
+| GET | /delays/active | Active delays (pending + escalated) |
+| GET | /delays/stats | Aggregate stats for dashboard |
+| GET | /delays/:id | Single delay |
+| GET | /delays/:id/messages | Message thread for a delay |
+| GET | /delays/by-order/:id | All delays for an order |
+| PATCH | /delays/:id/resolve | Manually resolve a delay |
+| POST | /webhooks/sms | Twilio inbound SMS webhook |
+| POST | /webhooks/sms/simulate | Simulate a rider reply (dev) |
+| GET | /riders | Rider list |
+| GET | /customers | Customer list |
+| GET | /stores | Store list |
